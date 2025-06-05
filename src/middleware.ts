@@ -11,8 +11,8 @@ export async function middleware(request: NextRequest) {
     });
 
     const supabase = createServerClient(
-      "https://ffkxsfkuuqgllwlvephw.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZma3hzZmt1dXFnbGx3bHZlcGh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkxMTAzNTQsImV4cCI6MjA2NDY4NjM1NH0.vUTJTRZFaodbDvjcdPkZyvKS9uJ1EF5AecZ0XnvcpUI",
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           getAll() {
