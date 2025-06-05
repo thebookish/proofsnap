@@ -11,10 +11,10 @@ export function UrlProvider({ children }: UrlProviderProps) {
 
   useEffect(() => {
     // Get the full URL information
-    const baseUrl = window.location.origin;
+    const baseUrl = 'https://proofsnap.vercel.app/';
     
     // Check if we're behind a proxy like ngrok by looking at the hostname
-    const isProxy = !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1');
+    // const isProxy = !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1');
     
     // Store the URL for use in the form
     setCurrentUrl(baseUrl);
