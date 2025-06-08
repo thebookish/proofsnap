@@ -237,7 +237,7 @@ export default async function SharePage({ params }: SharePageProps) {
                       <div>
                         <span className="text-gray-600 block mb-2">Tags:</span>
                         <div className="flex flex-wrap gap-1">
-                          {screenshot.tags.map((tag, index) => (
+                          {screenshot.tags.map((tag: string, index: number) => (
                             <Badge
                               key={index}
                               variant="secondary"
