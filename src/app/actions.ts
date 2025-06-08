@@ -364,3 +364,73 @@ export const generatePDFReportAction = async (screenshotId: string) => {
     return { success: false, error: "Failed to generate PDF report" };
   }
 };
+
+export const deleteScreenshotAction = async (screenshotId: string) => {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "User not authenticated" };
+    }
+
+    // Create service role client for database and storage operations
+    const serviceSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      },
+    );
+
+    // Get screenshot data to verify ownership and get filename
+    const { data: screenshot, error: screenshotError } = await supabase
+      .from("screenshots")
+      .select("id, filename, user_id")
+      .eq("id", screenshotId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (screenshotError || !screenshot) {
+      return { success: false, error: "Screenshot not found" };
+    }
+
+    // Delete from storage first
+    const { error: storageError } = await serviceSupabase.storage
+      .from("screenshots")
+      .remove([screenshot.filename]);
+
+    if (storageError) {
+      console.error("Storage deletion error:", storageError);
+      // Continue with database deletion even if storage fails
+    }
+
+    // Delete shareable links associated with this screenshot
+    await serviceSupabase
+      .from("shareable_links")
+      .delete()
+      .eq("screenshot_id", screenshotId);
+
+    // Delete from database
+    const { error: dbError } = await serviceSupabase
+      .from("screenshots")
+      .delete()
+      .eq("id", screenshotId)
+      .eq("user_id", user.id);
+
+    if (dbError) {
+      console.error("Database deletion error:", dbError);
+      return { success: false, error: "Failed to delete screenshot" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Delete screenshot error:", error);
+    return { success: false, error: "Failed to delete screenshot" };
+  }
+};

@@ -23,10 +23,23 @@ import {
   Tag,
   HardDrive,
   Shield,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   generateShareableLinkAction,
   generatePDFReportAction,
+  deleteScreenshotAction,
 } from "@/app/actions";
 
 interface Screenshot {
@@ -40,7 +53,7 @@ interface Screenshot {
   ip_address: string;
   browser_info: string;
   project: string;
-  tags: string[];
+  tags: string[] | null;
   verification_status: string;
   created_at: string;
   updated_at: string;
@@ -50,15 +63,18 @@ interface ScreenshotDetailModalProps {
   screenshot: Screenshot;
   open: boolean;
   onClose: () => void;
+  onDelete?: () => void;
 }
 
 export default function ScreenshotDetailModal({
   screenshot,
   open,
   onClose,
+  onDelete,
 }: ScreenshotDetailModalProps) {
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   const formatFileSize = (bytes: number) => {
@@ -94,6 +110,46 @@ export default function ScreenshotDetailModal({
         description: "Failed to copy to clipboard",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDownloadImage = () => {
+    const link = document.createElement("a");
+    link.href = screenshot.file_url;
+    link.download = screenshot.original_filename;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Download Started",
+      description: `Downloading ${screenshot.original_filename}`,
+    });
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteScreenshotAction(screenshot.id);
+      if (result.success) {
+        toast({
+          title: "Screenshot Deleted",
+          description: "Screenshot has been permanently deleted",
+        });
+        onClose();
+        onDelete?.();
+      } else {
+        throw new Error(result.error || "Failed to delete screenshot");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete screenshot",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -340,24 +396,71 @@ export default function ScreenshotDetailModal({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
-              <Button
-                onClick={handleGenerateShareableLink}
-                disabled={isGeneratingLink}
-                className="flex-1"
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                {isGeneratingLink ? "Generating..." : "Share Link"}
-              </Button>
-              <Button
-                onClick={handleGeneratePDF}
-                disabled={isGeneratingPDF}
-                variant="outline"
-                className="flex-1"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isGeneratingPDF ? "Generating..." : "PDF Report"}
-              </Button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleGenerateShareableLink}
+                  disabled={isGeneratingLink}
+                  className="flex-1"
+                >
+                  <Share2 className="h-4 w-4 mr-2" />
+                  {isGeneratingLink ? "Generating..." : "Share Link"}
+                </Button>
+                <Button
+                  onClick={handleGeneratePDF}
+                  disabled={isGeneratingPDF}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isGeneratingPDF ? "Generating..." : "PDF Report"}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleDownloadImage}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Image
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Screenshot</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "
+                        {screenshot.original_filename}"? This action cannot be
+                        undone and will permanently remove the screenshot and
+                        all associated data.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        {isDeleting ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </div>
 
@@ -461,7 +564,7 @@ export default function ScreenshotDetailModal({
                   <div>
                     <span className="text-gray-600 block mb-2">Tags:</span>
                     <div className="flex flex-wrap gap-1">
-                      {screenshot.tags.map((tag, index) => (
+                      {screenshot.tags.map((tag: string, index: number) => (
                         <Badge
                           key={index}
                           variant="secondary"

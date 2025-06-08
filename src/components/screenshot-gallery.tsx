@@ -23,9 +23,28 @@ import {
   Calendar,
   Hash,
   Clock,
+  Trash2,
+  MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { createClient } from "../../supabase/client";
 import ScreenshotDetailModal from "./screenshot-detail-modal";
+import { deleteScreenshotAction } from "@/app/actions";
 
 interface Screenshot {
   id: string;
@@ -38,7 +57,7 @@ interface Screenshot {
   ip_address: string;
   browser_info: string;
   project: string;
-  tags: string[];
+  tags: string[] | null;
   verification_status: string;
   created_at: string;
   updated_at: string;
@@ -62,6 +81,10 @@ export default function ScreenshotGallery({
   const [selectedScreenshot, setSelectedScreenshot] =
     useState<Screenshot | null>(null);
   const [projects, setProjects] = useState<string[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [screenshotToDelete, setScreenshotToDelete] =
+    useState<Screenshot | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const supabase = createClient();
 
@@ -159,6 +182,55 @@ export default function ScreenshotGallery({
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const handleDownloadImage = (screenshot: Screenshot) => {
+    const link = document.createElement("a");
+    link.href = screenshot.file_url;
+    link.download = screenshot.original_filename;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Download Started",
+      description: `Downloading ${screenshot.original_filename}`,
+    });
+  };
+
+  const handleDeleteClick = (screenshot: Screenshot) => {
+    setScreenshotToDelete(screenshot);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!screenshotToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const result = await deleteScreenshotAction(screenshotToDelete.id);
+      if (result.success) {
+        toast({
+          title: "Screenshot Deleted",
+          description: "Screenshot has been permanently deleted",
+        });
+        // Refresh the gallery
+        fetchScreenshots();
+      } else {
+        throw new Error(result.error || "Failed to delete screenshot");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete screenshot",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setScreenshotToDelete(null);
+    }
   };
 
   if (loading) {
@@ -299,7 +371,7 @@ export default function ScreenshotGallery({
                       }
                     }}
                   />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center gap-2">
                     <Button
                       variant="secondary"
                       size="sm"
@@ -309,6 +381,35 @@ export default function ScreenshotGallery({
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </Button>
+                  </div>
+                  {/* Action Menu */}
+                  <div className="absolute top-2 left-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem
+                          onClick={() => handleDownloadImage(screenshot)}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download Image
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteClick(screenshot)}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Screenshot
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   {/* Status Badge */}
                   <div className="absolute top-2 right-2">
@@ -361,15 +462,17 @@ export default function ScreenshotGallery({
                   {/* Tags */}
                   {screenshot.tags && screenshot.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {screenshot.tags.slice(0, 3).map((tag, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
+                      {screenshot.tags
+                        .slice(0, 3)
+                        .map((tag: string, index: number) => (
+                          <Badge
+                            key={index}
+                            variant="secondary"
+                            className="text-xs"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
                       {screenshot.tags.length > 3 && (
                         <Badge variant="secondary" className="text-xs">
                           +{screenshot.tags.length - 3}
@@ -390,8 +493,37 @@ export default function ScreenshotGallery({
           screenshot={selectedScreenshot}
           open={!!selectedScreenshot}
           onClose={() => setSelectedScreenshot(null)}
+          onDelete={() => {
+            setSelectedScreenshot(null);
+            fetchScreenshots();
+          }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Screenshot</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "
+              {screenshotToDelete?.original_filename}"? This action cannot be
+              undone and will permanently remove the screenshot and all
+              associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
