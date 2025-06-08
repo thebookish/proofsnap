@@ -4,6 +4,7 @@ import { encodedRedirect } from "@/utils/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "../../supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
@@ -162,4 +163,204 @@ export const signOutAction = async () => {
   const supabase = await createClient();
   await supabase.auth.signOut();
   return redirect("/sign-in");
+};
+
+export const uploadScreenshotAction = async (formData: FormData) => {
+  try {
+    // Create client for authentication check
+    const supabase = await createClient();
+
+    // Get the current session to ensure proper authentication context
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.user) {
+      console.error("Authentication error:", sessionError);
+      return { success: false, error: "User not authenticated" };
+    }
+
+    const user = session.user;
+
+    // Create service role client for database operations to bypass RLS
+    const serviceSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      },
+    );
+
+    const file = formData.get("file") as File;
+    const project = formData.get("project") as string;
+    const tagsString = formData.get("tags") as string;
+
+    if (!file) {
+      return { success: false, error: "No file provided" };
+    }
+
+    // Generate unique filename
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+
+    // Upload file to Supabase Storage using service client
+    const { data: uploadData, error: uploadError } =
+      await serviceSupabase.storage.from("screenshots").upload(fileName, file);
+
+    if (uploadError) {
+      return { success: false, error: uploadError.message };
+    }
+
+    // Get public URL
+    const {
+      data: { publicUrl },
+    } = serviceSupabase.storage.from("screenshots").getPublicUrl(fileName);
+
+    // Generate SHA256 hash
+    const arrayBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const sha256Hash = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Get client IP and browser info from headers
+    const headersList = headers();
+    const ipAddress =
+      headersList.get("x-forwarded-for") ||
+      headersList.get("x-real-ip") ||
+      "unknown";
+    const userAgent = headersList.get("user-agent") || "unknown";
+
+    // Parse tags
+    const tags = tagsString
+      ? tagsString
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      : [];
+
+    // Save metadata to database using service client (bypasses RLS)
+    console.log("Inserting screenshot for user:", user.id);
+    const { data: insertData, error: dbError } = await serviceSupabase
+      .from("screenshots")
+      .insert({
+        user_id: user.id,
+        filename: fileName,
+        original_filename: file.name,
+        file_size: file.size,
+        file_type: file.type,
+        file_url: publicUrl,
+        sha256_hash: sha256Hash,
+        ip_address: ipAddress,
+        browser_info: userAgent,
+        project: project || null,
+        tags: tags,
+        verification_status: "verified",
+      })
+      .select();
+
+    if (dbError) {
+      console.error("Database insert error:", dbError);
+      // Clean up uploaded file if database insert fails
+      await serviceSupabase.storage.from("screenshots").remove([fileName]);
+      return { success: false, error: `Database error: ${dbError.message}` };
+    }
+
+    console.log("Screenshot inserted successfully:", insertData);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Upload error:", error);
+    return { success: false, error: "Upload failed" };
+  }
+};
+
+export const generateShareableLinkAction = async (screenshotId: string) => {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "User not authenticated" };
+    }
+
+    // Verify user owns the screenshot
+    const { data: screenshot, error: screenshotError } = await supabase
+      .from("screenshots")
+      .select("id")
+      .eq("id", screenshotId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (screenshotError || !screenshot) {
+      return { success: false, error: "Screenshot not found" };
+    }
+
+    // Generate unique share token
+    const shareToken = crypto.randomUUID();
+
+    // Create shareable link record
+    const { error: linkError } = await supabase.from("shareable_links").insert({
+      screenshot_id: screenshotId,
+      user_id: user.id,
+      share_token: shareToken,
+      expires_at: null, // No expiration for now
+    });
+
+    if (linkError) {
+      return { success: false, error: linkError.message };
+    }
+
+    const origin = headers().get("origin") || "https://proofsnap.vercel.app";
+    const shareUrl = `${origin}/share/${shareToken}`;
+
+    return { success: true, shareUrl };
+  } catch (error) {
+    console.error("Share link generation error:", error);
+    return { success: false, error: "Failed to generate share link" };
+  }
+};
+
+export const generatePDFReportAction = async (screenshotId: string) => {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "User not authenticated" };
+    }
+
+    // Get screenshot data
+    const { data: screenshot, error: screenshotError } = await supabase
+      .from("screenshots")
+      .select("*")
+      .eq("id", screenshotId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (screenshotError || !screenshot) {
+      return { success: false, error: "Screenshot not found" };
+    }
+
+    // Return screenshot data for client-side PDF generation
+    const pdfData = {
+      screenshot,
+      generatedAt: new Date().toISOString(),
+      reportId: crypto.randomUUID(),
+    };
+
+    return { success: true, pdfData };
+  } catch (error) {
+    console.error("PDF generation error:", error);
+    return { success: false, error: "Failed to generate PDF report" };
+  }
 };

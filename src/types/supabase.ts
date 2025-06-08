@@ -9,6 +9,95 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      screenshots: {
+        Row: {
+          browser_info: string | null
+          created_at: string | null
+          file_size: number
+          file_type: string
+          file_url: string
+          filename: string
+          id: string
+          ip_address: string | null
+          original_filename: string
+          project: string | null
+          sha256_hash: string
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string
+          verification_status: string | null
+        }
+        Insert: {
+          browser_info?: string | null
+          created_at?: string | null
+          file_size: number
+          file_type: string
+          file_url: string
+          filename: string
+          id?: string
+          ip_address?: string | null
+          original_filename: string
+          project?: string | null
+          sha256_hash: string
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id: string
+          verification_status?: string | null
+        }
+        Update: {
+          browser_info?: string | null
+          created_at?: string | null
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          filename?: string
+          id?: string
+          ip_address?: string | null
+          original_filename?: string
+          project?: string | null
+          sha256_hash?: string
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+          verification_status?: string | null
+        }
+        Relationships: []
+      }
+      shareable_links: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          screenshot_id: string
+          share_token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          screenshot_id: string
+          share_token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          screenshot_id?: string
+          share_token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shareable_links_screenshot_id_fkey"
+            columns: ["screenshot_id"]
+            isOneToOne: false
+            referencedRelation: "screenshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
