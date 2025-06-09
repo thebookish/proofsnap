@@ -21,10 +21,7 @@ import {
   Check,
   RotateCcw,
 } from "lucide-react";
-import {
-  uploadScreenshotAction,
-  captureWebsiteScreenshotAction,
-} from "@/app/actions";
+import { uploadScreenshotAction } from "@/app/actions";
 
 interface UploadFile {
   file: File;
