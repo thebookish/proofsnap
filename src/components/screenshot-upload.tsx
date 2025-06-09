@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -17,6 +17,9 @@ import {
   AlertCircle,
   Camera,
   Monitor,
+  Square,
+  Check,
+  RotateCcw,
 } from "lucide-react";
 import {
   uploadScreenshotAction,
@@ -44,6 +47,13 @@ export default function ScreenshotUpload({
 
   const [isUploading, setIsUploading] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showBlurEditor, setShowBlurEditor] = useState(false);
+  const [capturedStream, setCapturedStream] = useState<MediaStream | null>(
+    null,
+  );
+  const [blurRegions, setBlurRegions] = useState<
+    Array<{ x: number; y: number; width: number; height: number }>
+  >([]);
   const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -169,58 +179,9 @@ export default function ScreenshotUpload({
         },
       });
 
-      // Create video element to capture the stream
-      const video = document.createElement("video");
-      video.srcObject = stream;
-      video.play();
-
-      // Wait for video to load
-      await new Promise((resolve) => {
-        video.onloadedmetadata = resolve;
-      });
-
-      // Create canvas and capture the frame
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx?.drawImage(video, 0, 0);
-
-      // Stop the stream
-      stream.getTracks().forEach((track) => track.stop());
-
-      // Convert canvas to blob
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((blob) => resolve(blob!), "image/png");
-      });
-
-      // Create a File object from the blob
-      const timestamp = Date.now();
-      const file = new File([blob], `screen-capture-${timestamp}.png`, {
-        type: "image/png",
-      });
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("project", project || "Screen Capture");
-      formData.append(
-        "tags",
-        tags
-          ? `${tags}, screen-capture, live-capture`
-          : "screen-capture, live-capture",
-      );
-
-      const result = await uploadScreenshotAction(formData);
-
-      if (result.success) {
-        toast({
-          title: "Screen Capture Successful",
-          description: "Screenshot captured and saved successfully",
-        });
-        onUploadComplete?.();
-      } else {
-        throw new Error(result.error || "Capture failed");
-      }
+      setCapturedStream(stream);
+      setShowBlurEditor(true);
+      setIsCapturing(false);
     } catch (error: any) {
       console.error("Screen capture error:", error);
       if (error.name === "NotAllowedError") {
@@ -244,13 +205,318 @@ export default function ScreenshotUpload({
           variant: "destructive",
         });
       }
-    } finally {
       setIsCapturing(false);
     }
   };
 
+  const finalizeCapture = async () => {
+    if (!capturedStream) return;
+
+    try {
+      // Create video element to capture the stream
+      const video = document.createElement("video");
+      video.srcObject = capturedStream;
+      video.play();
+
+      // Wait for video to load
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve;
+      });
+
+      // Create canvas and capture the frame
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not get canvas context");
+
+      ctx.drawImage(video, 0, 0);
+
+      // Apply blur to selected regions
+      blurRegions.forEach((region) => {
+        // Get the image data for the region
+        const imageData = ctx.getImageData(
+          region.x,
+          region.y,
+          region.width,
+          region.height,
+        );
+
+        // Apply blur effect by averaging pixels
+        const blurRadius = 10;
+        const data = imageData.data;
+        const width = imageData.width;
+        const height = imageData.height;
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            let r = 0,
+              g = 0,
+              b = 0,
+              count = 0;
+
+            // Average surrounding pixels
+            for (let dy = -blurRadius; dy <= blurRadius; dy++) {
+              for (let dx = -blurRadius; dx <= blurRadius; dx++) {
+                const ny = y + dy;
+                const nx = x + dx;
+
+                if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+                  const idx = (ny * width + nx) * 4;
+                  r += data[idx];
+                  g += data[idx + 1];
+                  b += data[idx + 2];
+                  count++;
+                }
+              }
+            }
+
+            const idx = (y * width + x) * 4;
+            data[idx] = r / count;
+            data[idx + 1] = g / count;
+            data[idx + 2] = b / count;
+          }
+        }
+
+        // Put the blurred image data back
+        ctx.putImageData(imageData, region.x, region.y);
+      });
+
+      // Stop the stream
+      capturedStream.getTracks().forEach((track) => track.stop());
+
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), "image/png");
+      });
+
+      // Create a File object from the blob
+      const timestamp = Date.now();
+      const file = new File([blob], `screen-capture-${timestamp}.png`, {
+        type: "image/png",
+      });
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("project", project || "Screen Capture");
+      formData.append(
+        "tags",
+        tags
+          ? `${tags}, screen-capture, live-capture${blurRegions.length > 0 ? ", blurred" : ""}`
+          : `screen-capture, live-capture${blurRegions.length > 0 ? ", blurred" : ""}`,
+      );
+
+      const result = await uploadScreenshotAction(formData);
+
+      if (result.success) {
+        toast({
+          title: "Screen Capture Successful",
+          description: `Screenshot captured and saved successfully${blurRegions.length > 0 ? " with blur effects" : ""}`,
+        });
+        onUploadComplete?.();
+      } else {
+        throw new Error(result.error || "Capture failed");
+      }
+
+      // Reset state
+      setShowBlurEditor(false);
+      setCapturedStream(null);
+      setBlurRegions([]);
+    } catch (error: any) {
+      console.error("Finalize capture error:", error);
+      toast({
+        title: "Capture Failed",
+        description: "Failed to finalize screenshot. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const cancelCapture = () => {
+    if (capturedStream) {
+      capturedStream.getTracks().forEach((track) => track.stop());
+    }
+    setShowBlurEditor(false);
+    setCapturedStream(null);
+    setBlurRegions([]);
+  };
+
+  const BlurEditor = () => {
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+    const [currentRegion, setCurrentRegion] = useState<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const overlayRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (capturedStream && videoRef.current) {
+        videoRef.current.srcObject = capturedStream;
+        videoRef.current.play();
+      }
+    }, [capturedStream]);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+      if (!overlayRef.current) return;
+      const rect = overlayRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      setStartPos({ x, y });
+      setIsDrawing(true);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+      if (!isDrawing || !overlayRef.current) return;
+      const rect = overlayRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const width = x - startPos.x;
+      const height = y - startPos.y;
+
+      setCurrentRegion({
+        x: Math.min(startPos.x, x),
+        y: Math.min(startPos.y, y),
+        width: Math.abs(width),
+        height: Math.abs(height),
+      });
+    };
+
+    const handleMouseUp = () => {
+      if (
+        currentRegion &&
+        currentRegion.width > 10 &&
+        currentRegion.height > 10
+      ) {
+        // Scale the region to match the actual video dimensions
+        const video = videoRef.current;
+        const overlay = overlayRef.current;
+        if (video && overlay) {
+          const scaleX = video.videoWidth / overlay.clientWidth;
+          const scaleY = video.videoHeight / overlay.clientHeight;
+
+          const scaledRegion = {
+            x: Math.round(currentRegion.x * scaleX),
+            y: Math.round(currentRegion.y * scaleY),
+            width: Math.round(currentRegion.width * scaleX),
+            height: Math.round(currentRegion.height * scaleY),
+          };
+
+          setBlurRegions((prev) => [...prev, scaledRegion]);
+        }
+      }
+      setIsDrawing(false);
+      setCurrentRegion(null);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-4xl max-h-[90vh] overflow-auto">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold mb-2">Select Areas to Blur</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Click and drag to select areas you want to blur. You can select
+              multiple areas.
+            </p>
+          </div>
+
+          <div className="relative mb-4">
+            <video
+              ref={videoRef}
+              className="max-w-full max-h-96 border rounded"
+              muted
+              playsInline
+            />
+            <div
+              ref={overlayRef}
+              className="absolute inset-0 cursor-crosshair"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            >
+              {/* Show existing blur regions */}
+              {blurRegions.map((region, index) => {
+                const video = videoRef.current;
+                const overlay = overlayRef.current;
+                if (!video || !overlay) return null;
+
+                const scaleX = overlay.clientWidth / video.videoWidth;
+                const scaleY = overlay.clientHeight / video.videoHeight;
+
+                return (
+                  <div
+                    key={index}
+                    className="absolute border-2 border-red-500 bg-red-200 bg-opacity-30"
+                    style={{
+                      left: region.x * scaleX,
+                      top: region.y * scaleY,
+                      width: region.width * scaleX,
+                      height: region.height * scaleY,
+                    }}
+                  >
+                    <div className="absolute -top-6 left-0 text-xs bg-red-500 text-white px-1 rounded">
+                      Blur {index + 1}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Show current selection */}
+              {currentRegion && (
+                <div
+                  className="absolute border-2 border-blue-500 bg-blue-200 bg-opacity-30"
+                  style={{
+                    left: currentRegion.x,
+                    top: currentRegion.y,
+                    width: currentRegion.width,
+                    height: currentRegion.height,
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Square className="h-4 w-4 text-gray-500" />
+              <span className="text-sm text-gray-600">
+                {blurRegions.length} blur region(s) selected
+              </span>
+              {blurRegions.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBlurRegions([])}
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={cancelCapture}>
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button onClick={finalizeCapture}>
+                <Check className="h-4 w-4 mr-2" />
+                Capture Screenshot
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 bg-white">
+      {showBlurEditor && <BlurEditor />}
       {/* Upload Options */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* File Upload */}

@@ -109,9 +109,9 @@ export default function ScreenshotGallery({
       setScreenshots(data || []);
 
       // Extract unique projects
-      const uniqueProjects = [
-        ...new Set((data || []).map((s) => s.project).filter(Boolean)),
-      ];
+      const uniqueProjects = Array.from(
+        new Set((data || []).map((s) => s.project).filter(Boolean)),
+      );
       setProjects(uniqueProjects);
     } catch (error) {
       console.error("Error fetching screenshots:", error);
