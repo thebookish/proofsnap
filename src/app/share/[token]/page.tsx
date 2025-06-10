@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   Shield,
   Calendar,
@@ -11,6 +12,8 @@ import {
   FileText,
   Tag,
 } from "lucide-react";
+import DownloadButton from "@/components/download-button";
+import Footer from "@/components/footer";
 import { createClient } from "../../../../supabase/server";
 
 interface SharePageProps {
@@ -103,16 +106,23 @@ export default async function SharePage({ params }: SharePageProps) {
                   </Badge>
                 </div>
               </div>
-              <div className="mt-4 text-sm text-gray-600">
-                <p>
-                  <strong>Filename:</strong> {screenshot.original_filename}
-                </p>
-                <p>
-                  <strong>Size:</strong> {formatFileSize(screenshot.file_size)}
-                </p>
-                <p>
-                  <strong>Type:</strong> {screenshot.file_type.toUpperCase()}
-                </p>
+              <div className="mt-4 space-y-3">
+                <div className="text-sm text-gray-600">
+                  <p>
+                    <strong>Filename:</strong> {screenshot.original_filename}
+                  </p>
+                  <p>
+                    <strong>Size:</strong>{" "}
+                    {formatFileSize(screenshot.file_size)}
+                  </p>
+                  <p>
+                    <strong>Type:</strong> {screenshot.file_type.toUpperCase()}
+                  </p>
+                </div>
+                <DownloadButton
+                  fileUrl={screenshot.file_url}
+                  filename={screenshot.original_filename}
+                />
               </div>
             </CardContent>
           </Card>
@@ -266,6 +276,7 @@ export default async function SharePage({ params }: SharePageProps) {
           </p>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

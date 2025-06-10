@@ -34,6 +34,23 @@ interface AnalyticsData {
   storageUsed: string;
 }
 
+interface Screenshot {
+  id: string;
+  filename: string;
+  original_filename: string;
+  file_size: number;
+  file_type: string;
+  file_url: string;
+  sha256_hash: string;
+  ip_address: string;
+  browser_info: string;
+  project: string;
+  tags: string[] | null;
+  verification_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function Dashboard() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
@@ -45,11 +62,32 @@ export default function Dashboard() {
     storageUsed: "0 MB",
   });
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+  const [editingScreenshot, setEditingScreenshot] = useState<Screenshot | null>(
+    null,
+  );
+  const [activeTab, setActiveTab] = useState("gallery");
   const supabase = createClient();
 
   const handleUploadComplete = () => {
     setRefreshTrigger((prev) => prev + 1);
     fetchAnalytics(); // Refresh analytics when new upload completes
+  };
+
+  const handleEditScreenshot = (screenshot: Screenshot) => {
+    setEditingScreenshot(screenshot);
+    setActiveTab("upload");
+  };
+
+  const handleEditComplete = () => {
+    setEditingScreenshot(null);
+    setRefreshTrigger((prev) => prev + 1);
+    fetchAnalytics();
+    setActiveTab("gallery");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingScreenshot(null);
+    setActiveTab("gallery");
   };
 
   const fetchAnalytics = async () => {
@@ -138,7 +176,11 @@ export default function Dashboard() {
           </header>
 
           {/* Main Content */}
-          <Tabs defaultValue="gallery" className="space-y-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-6"
+          >
             <TabsList className="grid w-full grid-cols-3 lg:w-96">
               <TabsTrigger value="gallery" className="flex items-center gap-2">
                 <Images className="h-4 w-4" />
@@ -167,7 +209,10 @@ export default function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ScreenshotGallery refreshTrigger={refreshTrigger} />
+                  <ScreenshotGallery
+                    refreshTrigger={refreshTrigger}
+                    onEditScreenshot={handleEditScreenshot}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -182,7 +227,12 @@ export default function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ScreenshotUpload onUploadComplete={handleUploadComplete} />
+                  <ScreenshotUpload
+                    onUploadComplete={handleUploadComplete}
+                    editingScreenshot={editingScreenshot}
+                    onEditComplete={handleEditComplete}
+                    onCancelEdit={handleCancelEdit}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>

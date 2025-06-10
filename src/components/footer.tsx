@@ -14,7 +14,7 @@ export default function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link
-                  href="#features"
+                  href="/#features"
                   className="text-gray-600 hover:text-blue-600"
                 >
                   Features
@@ -29,14 +29,24 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://docs.proofsnap.com/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Verification API
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://docs.proofsnap.com/integrations"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Integrations
-                </Link>
+                </a>
               </li>
             </ul>
           </div>
@@ -46,24 +56,44 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-900 mb-4">Solutions</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://proofsnap.com/solutions/legal"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Legal Evidence
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://proofsnap.com/solutions/insurance"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Insurance Claims
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://proofsnap.com/solutions/forensics"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Digital Forensics
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://proofsnap.com/solutions/compliance"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Compliance
-                </Link>
+                </a>
               </li>
             </ul>
           </div>
@@ -73,24 +103,44 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-900 mb-4">Resources</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://docs.proofsnap.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Documentation
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://help.proofsnap.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Help Center
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://docs.proofsnap.com/security"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Security Guide
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://docs.proofsnap.com/best-practices"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Best Practices
-                </Link>
+                </a>
               </li>
             </ul>
           </div>
@@ -100,24 +150,44 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-900 mb-4">Company</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://proofsnap.com/about"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   About ProofSnap
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://proofsnap.com/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Privacy Policy
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://proofsnap.com/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Terms of Service
-                </Link>
+                </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-blue-600">
+                <a
+                  href="https://proofsnap.com/contact"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600"
+                >
                   Contact Us
-                </Link>
+                </a>
               </li>
             </ul>
           </div>
@@ -130,15 +200,30 @@ export default function Footer() {
           </div>
 
           <div className="flex space-x-6">
-            <a href="#" className="text-gray-400 hover:text-gray-500">
+            <a
+              href="https://twitter.com/proofsnap"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-500"
+            >
               <span className="sr-only">Twitter</span>
               <Twitter className="h-6 w-6" />
             </a>
-            <a href="#" className="text-gray-400 hover:text-gray-500">
+            <a
+              href="https://linkedin.com/company/proofsnap"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-500"
+            >
               <span className="sr-only">LinkedIn</span>
               <Linkedin className="h-6 w-6" />
             </a>
-            <a href="#" className="text-gray-400 hover:text-gray-500">
+            <a
+              href="https://github.com/proofsnap"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-500"
+            >
               <span className="sr-only">GitHub</span>
               <Github className="h-6 w-6" />
             </a>

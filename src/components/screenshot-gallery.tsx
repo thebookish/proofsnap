@@ -25,6 +25,7 @@ import {
   Clock,
   Trash2,
   MoreVertical,
+  Edit,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -65,10 +66,12 @@ interface Screenshot {
 
 interface ScreenshotGalleryProps {
   refreshTrigger?: number;
+  onEditScreenshot?: (screenshot: Screenshot) => void;
 }
 
 export default function ScreenshotGallery({
   refreshTrigger,
+  onEditScreenshot,
 }: ScreenshotGalleryProps) {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [filteredScreenshots, setFilteredScreenshots] = useState<Screenshot[]>(
@@ -396,6 +399,12 @@ export default function ScreenshotGallery({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
                         <DropdownMenuItem
+                          onClick={() => onEditScreenshot?.(screenshot)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Screenshot
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => handleDownloadImage(screenshot)}
                         >
                           <Download className="h-4 w-4 mr-2" />
@@ -497,6 +506,7 @@ export default function ScreenshotGallery({
             setSelectedScreenshot(null);
             fetchScreenshots();
           }}
+          onEdit={onEditScreenshot}
         />
       )}
 

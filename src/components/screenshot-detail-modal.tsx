@@ -24,6 +24,7 @@ import {
   HardDrive,
   Shield,
   Trash2,
+  Edit,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -64,6 +65,7 @@ interface ScreenshotDetailModalProps {
   open: boolean;
   onClose: () => void;
   onDelete?: () => void;
+  onEdit?: (screenshot: Screenshot) => void;
 }
 
 export default function ScreenshotDetailModal({
@@ -71,6 +73,7 @@ export default function ScreenshotDetailModal({
   open,
   onClose,
   onDelete,
+  onEdit,
 }: ScreenshotDetailModalProps) {
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -418,6 +421,17 @@ export default function ScreenshotDetailModal({
               </div>
               <div className="flex gap-2">
                 <Button
+                  onClick={() => {
+                    onEdit?.(screenshot);
+                    onClose();
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Screenshot
+                </Button>
+                <Button
                   onClick={handleDownloadImage}
                   variant="outline"
                   className="flex-1"
@@ -425,11 +439,13 @@ export default function ScreenshotDetailModal({
                   <Download className="h-4 w-4 mr-2" />
                   Download Image
                 </Button>
+              </div>
+              <div className="flex gap-2">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
                       variant="destructive"
-                      className="flex-1"
+                      className="w-full"
                       disabled={isDeleting}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
